@@ -33,7 +33,7 @@ mod tests {
     }
 
     #[test]
-    fn it_cant_find_number_6_in_binary_search() {
+    fn it_cant_find_number_6_index_in_binary_search() {
         let arr: [u32; 5] = [1, 2, 3, 4, 5];
 
         let result = binary_search(&arr, 6);
