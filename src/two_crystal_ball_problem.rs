@@ -7,6 +7,7 @@ fn two_crystal_balls(breaks: &[bool]) -> i32 {
 
     println!("starting point: {}", starting_point);
 
+    // first ball validation of breaks
     while starting_point < breaks.len() {
         if breaks[starting_point] {
             println!("found start point of true: {}", starting_point);
@@ -26,6 +27,7 @@ fn two_crystal_balls(breaks: &[bool]) -> i32 {
 
     let mut j = 0;
 
+    // second ball validation of breaks
     while j <= jump_amount && starting_point < breaks.len() {
         if breaks[starting_point] {
             println!("return the value: {}", starting_point);
