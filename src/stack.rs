@@ -1,62 +1,43 @@
-use std::{cell::RefCell, rc::Rc};
-
 #[derive(Debug)]
 struct Node<T> {
     value: T,
-    previous: Option<Rc<RefCell<Node<T>>>>,
+    previous: Option<Box<Node<T>>>,
 }
 
 #[derive(Debug)]
 pub struct Stack<T> {
     length: usize,
-    head: Option<Rc<RefCell<Node<T>>>>,
+    head: Option<Box<Node<T>>>,
 }
 
 impl<T: std::fmt::Debug> Stack<T> {
     pub fn new() -> Self {
         Stack {
-            length: 0,
             head: None,
+            length: 0,
         }
     }
 
     pub fn push(&mut self, item: T) {
-        let node = Rc::new(RefCell::new(Node {
+        let node = Box::new(Node {
             value: item,
-            previous: None,
-        }));
+            previous: self.head.take(),
+        });
 
+        self.head = Some(node);
         self.length += 1;
-
-        match self.head.take() {
-            Some(current_head) => {
-                node.borrow_mut().previous = Some(current_head.clone());
-                self.head = Some(node);
-            }
-            None => self.head = Some(node.clone()),
-        }
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        match self.head.take() {
-            Some(head) => {
-                self.length = self.length.saturating_sub(1);
-
-                if self.length > 0 {
-                    self.head = head.borrow().previous.clone();
-                }
-
-                Some(Rc::try_unwrap(head).unwrap().into_inner().value)
-            }
-            None => None,
-        }
+        self.head.take().map(|node| {
+            self.head = node.previous;
+            self.length = self.length.saturating_sub(1);
+            node.value
+        })
     }
 
-    pub fn peek(&self) -> Option<T>
-    where
-        T: Clone,
-    {
-        self.head.as_ref().map(|head| head.borrow().value.clone())
+    pub fn peek(&self) -> Option<&T> {
+        self.head.as_ref().map(|node| &node.value)
     }
 }
 
@@ -106,18 +87,18 @@ mod tests {
 
         // Test peek with single element
         stack.push(42);
-        assert_eq!(stack.peek(), Some(42));
+        assert_eq!(stack.peek(), Some(&42));
         assert_eq!(stack.length, 1); // Peek shouldn't change length
 
         // Test peek with multiple elements
         stack.push(100);
         stack.push(200);
-        assert_eq!(stack.peek(), Some(200)); // Should return top element
+        assert_eq!(stack.peek(), Some(&200)); // Should return top element
         assert_eq!(stack.length, 3);
 
         // Test peek doesn't affect pop
         assert_eq!(stack.pop(), Some(200));
-        assert_eq!(stack.peek(), Some(100));
+        assert_eq!(stack.peek(), Some(&100));
 
         // Test peek after popping all elements
         stack.pop();
@@ -136,7 +117,7 @@ mod tests {
         stack.push("third".to_string());
 
         assert_eq!(stack.length, 3);
-        assert_eq!(stack.peek(), Some("third".to_string()));
+        assert_eq!(stack.peek(), Some(&"third".to_string()));
 
         // Test popping strings
         assert_eq!(stack.pop(), Some("third".to_string()));
@@ -151,7 +132,7 @@ mod tests {
         str_stack.push("hello");
         str_stack.push("world");
 
-        assert_eq!(str_stack.peek(), Some("world"));
+        assert_eq!(str_stack.peek(), Some(&"world"));
         assert_eq!(str_stack.pop(), Some("world"));
         assert_eq!(str_stack.pop(), Some("hello"));
     }
@@ -166,7 +147,7 @@ mod tests {
         tuple_stack.push((3, "c"));
 
         assert_eq!(tuple_stack.pop(), Some((3, "c")));
-        assert_eq!(tuple_stack.peek(), Some((2, "b")));
+        assert_eq!(tuple_stack.peek(), Some(&(2, "b")));
 
         // Test with vectors
         let mut vec_stack = Stack::new();
@@ -174,7 +155,7 @@ mod tests {
         vec_stack.push(vec![4, 5, 6]);
 
         assert_eq!(vec_stack.pop(), Some(vec![4, 5, 6]));
-        assert_eq!(vec_stack.peek(), Some(vec![1, 2, 3]));
+        assert_eq!(vec_stack.peek(), Some(&vec![1, 2, 3]));
 
         // Test length tracking with zero values
         let mut zero_stack = Stack::new();
@@ -204,14 +185,14 @@ mod tests {
             stack.push(i);
         }
         assert_eq!(stack.length, 1000);
-        assert_eq!(stack.peek(), Some(999));
+        assert_eq!(stack.peek(), Some(&999));
 
         // Pop half of them
         for i in (500..1000).rev() {
             assert_eq!(stack.pop(), Some(i));
         }
         assert_eq!(stack.length, 500);
-        assert_eq!(stack.peek(), Some(499));
+        assert_eq!(stack.peek(), Some(&499));
 
         // Mixed push and pop operations
         stack.push(1000);
@@ -233,7 +214,7 @@ mod tests {
         // Test operations on cleared stack
         stack.push(9999);
         assert_eq!(stack.length, 1);
-        assert_eq!(stack.peek(), Some(9999));
+        assert_eq!(stack.peek(), Some(&9999));
         assert_eq!(stack.pop(), Some(9999));
         assert_eq!(stack.length, 0);
     }
