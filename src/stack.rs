@@ -10,7 +10,7 @@ pub struct Stack<T> {
     head: Option<Box<Node<T>>>,
 }
 
-impl<T: std::fmt::Debug> Stack<T> {
+impl<T> Stack<T> {
     pub fn new() -> Self {
         Stack {
             head: None,
@@ -39,6 +39,61 @@ impl<T: std::fmt::Debug> Stack<T> {
     pub fn peek(&self) -> Option<&T> {
         self.head.as_ref().map(|node| &node.value)
     }
+
+    pub fn len(&self) -> usize {
+        self.length
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.head.is_none()
+    }
+}
+
+impl<T> Default for Stack<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: std::fmt::Display> std::fmt::Display for Stack<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Stack [")?;
+
+        let mut current = &self.head;
+        let mut first = true;
+
+        while let Some(node) = current {
+            if !first {
+                write!(f, ", ")?;
+            }
+
+            write!(f, "{}", node.value)?;
+            current = &node.previous;
+            first = false;
+        }
+
+        write!(f, "] length: {}", self.length)
+    }
+}
+
+impl<T> Iterator for Stack<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pop()
+    }
+}
+
+impl<T> FromIterator<T> for Stack<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut stack = Stack::new();
+
+        for item in iter {
+            stack.push(item);
+        }
+
+        stack
+    }
 }
 
 #[cfg(test)]
@@ -50,60 +105,75 @@ mod tests {
     fn test_basic_stack_operations() {
         let mut stack = Stack::new();
 
-        // Test new stack is empty
-        assert_eq!(stack.length, 0);
-        assert!(stack.pop().is_none());
+        // Test new stack
+        assert!(stack.is_empty());
+        assert_eq!(stack.len(), 0);
+        assert!(stack.peek().is_none());
 
-        // Test push operation
-        stack.push(10);
-        assert_eq!(stack.length, 1);
+        // Test push
+        stack.push(1);
+        stack.push(2);
+        stack.push(3);
 
-        stack.push(20);
-        stack.push(30);
-        assert_eq!(stack.length, 3);
+        assert_eq!(stack.len(), 3);
+        assert!(!stack.is_empty());
+        assert_eq!(stack.peek(), Some(&3));
 
-        // Test pop operation (LIFO - Last In, First Out)
-        assert_eq!(stack.pop(), Some(30));
-        assert_eq!(stack.length, 2);
+        // Test pop
+        assert_eq!(stack.pop(), Some(3));
+        assert_eq!(stack.pop(), Some(2));
+        assert_eq!(stack.len(), 1);
 
-        assert_eq!(stack.pop(), Some(20));
-        assert_eq!(stack.length, 1);
-
-        assert_eq!(stack.pop(), Some(10));
-        assert_eq!(stack.length, 0);
-
-        // Test pop from empty stack
+        assert_eq!(stack.pop(), Some(1));
+        assert!(stack.is_empty());
         assert_eq!(stack.pop(), None);
-        assert_eq!(stack.length, 0);
     }
 
     // Test Suite 2: Peek Functionality
     #[test]
     fn test_peek_operations() {
         let mut stack = Stack::new();
+        stack.push("hello");
 
-        // Test peek on empty stack
-        assert!(stack.peek().is_none());
+        assert_eq!(stack.peek(), Some(&"hello"));
+        assert_eq!(stack.len(), 1);
+        assert_eq!(stack.peek(), Some(&"hello")); // Can call multiple times
 
-        // Test peek with single element
-        stack.push(42);
-        assert_eq!(stack.peek(), Some(&42));
-        assert_eq!(stack.length, 1); // Peek shouldn't change length
+        assert_eq!(stack.pop(), Some("hello"));
+    }
 
-        // Test peek with multiple elements
-        stack.push(100);
-        stack.push(200);
-        assert_eq!(stack.peek(), Some(&200)); // Should return top element
-        assert_eq!(stack.length, 3);
+    #[test]
+    fn test_iterator() {
+        let mut stack = Stack::new();
+        stack.push(1);
+        stack.push(2);
+        stack.push(3);
 
-        // Test peek doesn't affect pop
-        assert_eq!(stack.pop(), Some(200));
-        assert_eq!(stack.peek(), Some(&100));
+        let items: Vec<_> = stack.collect();
+        assert_eq!(items, vec![3, 2, 1]); // LIFO order
+    }
 
-        // Test peek after popping all elements
-        stack.pop();
-        stack.pop();
-        assert!(stack.peek().is_none());
+    #[test]
+    fn test_from_iterator() {
+        let stack: Stack<i32> = (1..=3).collect();
+        assert_eq!(stack.len(), 3);
+
+        let mut stack = stack;
+        assert_eq!(stack.pop(), Some(3)); // Last pushed (3) comes out first
+        assert_eq!(stack.pop(), Some(2));
+        assert_eq!(stack.pop(), Some(1));
+    }
+
+    #[test]
+    fn test_display() {
+        let mut stack = Stack::new();
+        stack.push(1);
+        stack.push(2);
+        stack.push(3);
+
+        let display = format!("{}", stack);
+        assert!(display.contains("3, 2, 1"));
+        assert!(display.contains("length: 3"));
     }
 
     // Test Suite 3: String Type Operations
