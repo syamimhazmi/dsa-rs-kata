@@ -1,4 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Ref, RefCell},
+    rc::Rc,
+    usize,
+};
 
 #[derive(Debug)]
 struct Node<T> {
@@ -13,7 +17,12 @@ pub struct Queue<T> {
     tail: Option<Rc<RefCell<Node<T>>>>,
 }
 
-impl<T: std::fmt::Debug> Queue<T> {
+#[derive(Debug)]
+pub enum QueueError {
+    MultipleReference,
+}
+
+impl<T> Queue<T> {
     pub fn new() -> Self {
         Self {
             length: 0,
@@ -42,24 +51,47 @@ impl<T: std::fmt::Debug> Queue<T> {
         }
     }
 
-    pub fn dequeue(&mut self) -> Option<T> {
-        self.head.take().map(|head| {
-            match head.borrow_mut().next.take() {
-                Some(new_head) => self.head = Some(new_head),
-                None => self.tail = None,
+    pub fn dequeue(&mut self) -> Result<Option<T>, QueueError> {
+        match self.head.take() {
+            Some(head) => {
+                match head.borrow_mut().next.take() {
+                    Some(new_head) => self.head = Some(new_head),
+                    None => self.tail = None,
+                }
+
+                self.length -= 1;
+
+                match Rc::try_unwrap(head) {
+                    Ok(cell) => Ok(Some(cell.into_inner().value)),
+                    Err(_) => Err(QueueError::MultipleReference),
+                }
             }
-
-            self.length -= 1;
-
-            Rc::try_unwrap(head).unwrap().into_inner().value
-        })
+            None => Ok(None),
+        }
     }
 
-    pub fn peek(&self) -> Option<T>
-    where
-        T: Clone,
-    {
-        self.head.as_ref().map(|head| head.borrow().value.clone())
+    pub fn peek(&self) -> Option<Ref<T>> {
+        self.head
+            .as_ref()
+            .map(|head| Ref::map(head.borrow(), |node| &node.value))
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
+
+    pub fn len(&self) -> usize {
+        self.length
+    }
+
+    pub fn dequeue_unchecked(&mut self) -> Option<T> {
+        self.dequeue().unwrap()
+    }
+}
+
+impl<T> Default for Queue<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -72,29 +104,34 @@ mod tests {
         let mut queue: Queue<i32> = Queue::new();
 
         // Test initial state
-        assert_eq!(queue.length, 0);
-        assert_eq!(queue.peek(), None);
-        assert_eq!(queue.dequeue(), None);
+        assert_eq!(queue.len(), 0);
+        assert!(queue.is_empty());
+        assert!(queue.peek().is_none());
+        assert_eq!(queue.dequeue_unchecked(), None);
 
         // Test enqueue and length tracking
         queue.enqueue(10);
-        assert_eq!(queue.length, 1);
-        assert_eq!(queue.peek(), Some(10));
+        assert_eq!(queue.len(), 1);
+        assert!(!queue.is_empty());
+
+        // Test improved peek (returns reference)
+        {
+            let peeked = queue.peek().unwrap();
+            assert_eq!(*peeked, 10);
+        }
 
         queue.enqueue(20);
         queue.enqueue(30);
-        assert_eq!(queue.length, 3);
-        assert_eq!(queue.peek(), Some(10));
+        assert_eq!(queue.len(), 3);
 
-        // Test FIFO dequeue behavior
-        assert_eq!(queue.dequeue(), Some(10));
-        assert_eq!(queue.length, 2);
-        assert_eq!(queue.peek(), Some(20));
+        // Test FIFO dequeue behavior with error handling
+        assert_eq!(queue.dequeue().unwrap(), Some(10));
+        assert_eq!(queue.len(), 2);
 
-        assert_eq!(queue.dequeue(), Some(20));
-        assert_eq!(queue.dequeue(), Some(30));
-        assert_eq!(queue.length, 0);
-        assert_eq!(queue.peek(), None);
+        assert_eq!(queue.dequeue_unchecked(), Some(20));
+        assert_eq!(queue.dequeue_unchecked(), Some(30));
+        assert_eq!(queue.len(), 0);
+        assert!(queue.is_empty());
     }
 
     #[test]
@@ -103,12 +140,12 @@ mod tests {
 
         // Test operations on empty queue
         assert_eq!(queue.length, 0);
-        assert_eq!(queue.dequeue(), None);
-        assert_eq!(queue.peek(), None);
+        assert_eq!(queue.dequeue().unwrap(), None);
+        assert!(queue.peek().is_none());
 
         // Ensure multiple dequeue calls on empty queue don't crash
-        assert_eq!(queue.dequeue(), None);
-        assert_eq!(queue.dequeue(), None);
+        assert_eq!(queue.dequeue().unwrap(), None);
+        assert_eq!(queue.dequeue().unwrap(), None);
         assert_eq!(queue.length, 0);
     }
 
@@ -119,19 +156,19 @@ mod tests {
         // Add single element
         queue.enqueue("hello");
         assert_eq!(queue.length, 1);
-        assert_eq!(queue.peek(), Some("hello"));
+        assert_eq!(*queue.peek().unwrap(), "hello");
 
         // Peek doesn't modify queue
-        assert_eq!(queue.peek(), Some("hello"));
+        assert_eq!(*queue.peek().unwrap(), "hello");
         assert_eq!(queue.length, 1);
 
         // Dequeue single element
-        assert_eq!(queue.dequeue(), Some("hello"));
+        assert_eq!(queue.dequeue().unwrap(), Some("hello"));
         assert_eq!(queue.length, 0);
-        assert_eq!(queue.peek(), None);
+        assert!(queue.peek().is_none());
 
         // Queue should be empty now
-        assert_eq!(queue.dequeue(), None);
+        assert_eq!(queue.dequeue().unwrap(), None);
     }
 
     #[test]
@@ -147,14 +184,14 @@ mod tests {
 
         // Dequeue and verify FIFO order
         for (i, expected_item) in items.iter().enumerate() {
-            assert_eq!(queue.peek(), Some(*expected_item));
-            assert_eq!(queue.dequeue(), Some(*expected_item));
+            assert_eq!(*queue.peek().unwrap(), *expected_item);
+            assert_eq!(queue.dequeue().unwrap(), Some(*expected_item));
             assert_eq!(queue.length, 4 - i);
         }
 
         // Queue should be empty
         assert_eq!(queue.length, 0);
-        assert_eq!(queue.peek(), None);
+        assert!(queue.peek().is_none());
     }
 
     #[test]
@@ -166,25 +203,25 @@ mod tests {
         queue.enqueue(2);
         assert_eq!(queue.length, 2);
 
-        assert_eq!(queue.dequeue(), Some(1));
+        assert_eq!(queue.dequeue().unwrap(), Some(1));
         assert_eq!(queue.length, 1);
 
         queue.enqueue(3);
         queue.enqueue(4);
         assert_eq!(queue.length, 3);
-        assert_eq!(queue.peek(), Some(2));
+        assert_eq!(*queue.peek().unwrap(), 2);
 
-        assert_eq!(queue.dequeue(), Some(2));
-        assert_eq!(queue.dequeue(), Some(3));
+        assert_eq!(queue.dequeue().unwrap(), Some(2));
+        assert_eq!(queue.dequeue().unwrap(), Some(3));
         assert_eq!(queue.length, 1);
 
         queue.enqueue(5);
         assert_eq!(queue.length, 2);
 
         // Final state verification
-        assert_eq!(queue.dequeue(), Some(4));
-        assert_eq!(queue.dequeue(), Some(5));
+        assert_eq!(queue.dequeue().unwrap(), Some(4));
+        assert_eq!(queue.dequeue().unwrap(), Some(5));
         assert_eq!(queue.length, 0);
-        assert_eq!(queue.dequeue(), None);
+        assert_eq!(queue.dequeue().unwrap(), None);
     }
 }
