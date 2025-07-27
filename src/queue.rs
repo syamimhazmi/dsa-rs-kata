@@ -1,7 +1,6 @@
 use std::{
     cell::{Ref, RefCell},
     rc::Rc,
-    usize,
 };
 
 #[derive(Debug)]
@@ -125,7 +124,7 @@ mod tests {
         assert_eq!(queue.len(), 3);
 
         // Test FIFO dequeue behavior with error handling
-        assert_eq!(queue.dequeue().unwrap(), Some(10));
+        assert_eq!(queue.dequeue_unchecked(), Some(10));
         assert_eq!(queue.len(), 2);
 
         assert_eq!(queue.dequeue_unchecked(), Some(20));
@@ -140,12 +139,12 @@ mod tests {
 
         // Test operations on empty queue
         assert_eq!(queue.length, 0);
-        assert_eq!(queue.dequeue().unwrap(), None);
+        assert_eq!(queue.dequeue_unchecked(), None);
         assert!(queue.peek().is_none());
 
         // Ensure multiple dequeue calls on empty queue don't crash
-        assert_eq!(queue.dequeue().unwrap(), None);
-        assert_eq!(queue.dequeue().unwrap(), None);
+        assert_eq!(queue.dequeue_unchecked(), None);
+        assert_eq!(queue.dequeue_unchecked(), None);
         assert_eq!(queue.length, 0);
     }
 

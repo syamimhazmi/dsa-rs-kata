@@ -46,8 +46,6 @@ mod tests {
 
     #[test]
     fn it_can_run_edge_cases() {
-        // Test Case 2: Edge cases - empty, single element, and two elements
-
         // Empty array
         let mut empty: [i32; 0] = [];
         bubble_sort(&mut empty);
@@ -66,8 +64,6 @@ mod tests {
 
     #[test]
     fn it_sorted_special_array() {
-        // Test Case 3: Already sorted, reverse sorted, and duplicates
-
         // Sorted array
         let mut already_sorted = [1, 2, 3, 4, 5];
         bubble_sort(&mut already_sorted);
