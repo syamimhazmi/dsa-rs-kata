@@ -1,5 +1,6 @@
 mod binary_node;
 mod binary_search_algo;
+mod bt_bfs;
 mod bt_in_order;
 mod bt_post_order;
 mod bt_pre_order;

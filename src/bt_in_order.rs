@@ -20,7 +20,6 @@ fn in_order_search(head: Option<&BinaryNode>) -> Vec<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::binary_node::BinaryNode;
 
     // Helper function to create a new node
     fn new_node(value: i32) -> Box<BinaryNode> {
