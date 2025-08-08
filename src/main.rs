@@ -1,4 +1,6 @@
+mod binary_node;
 mod binary_search_algo;
+mod bt_pre_order;
 mod bubble_sort;
 mod doubly_linked_list;
 mod linear_search_list;
