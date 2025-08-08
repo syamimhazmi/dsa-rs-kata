@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use crate::binary_node::BinaryNode;
 
+/// breadth first search
 fn bfs(head: Option<&BinaryNode>, needle: i32) -> bool {
     let Some(head_node) = head else {
         return false;
@@ -32,7 +33,6 @@ fn bfs(head: Option<&BinaryNode>, needle: i32) -> bool {
 mod tests {
     use super::*;
 
-    // Helper function to create a new node
     fn new_node(value: i32) -> Box<BinaryNode> {
         Box::new(BinaryNode {
             value,
@@ -41,7 +41,6 @@ mod tests {
         })
     }
 
-    // Helper function to create a node with children
     fn new_node_with_children(
         value: i32,
         left: Option<Box<BinaryNode>>,
@@ -90,7 +89,6 @@ mod tests {
             )),
         );
 
-        // Test finding values at different levels
         assert!(bfs(Some(&root), 4)); // Root
         assert!(bfs(Some(&root), 2)); // Level 1
         assert!(!bfs(Some(&root), 6)); // Level 1
