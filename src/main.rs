@@ -5,6 +5,7 @@ mod bt_in_order;
 mod bt_post_order;
 mod bt_pre_order;
 mod bubble_sort;
+mod compare_binary_trees;
 mod doubly_linked_list;
 mod linear_search_list;
 mod maze_solver;
