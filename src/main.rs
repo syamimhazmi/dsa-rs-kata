@@ -10,6 +10,7 @@ mod dfs_on_bst;
 mod doubly_linked_list;
 mod linear_search_list;
 mod maze_solver;
+mod min_heap;
 mod queue;
 mod quicksort;
 mod stack;
